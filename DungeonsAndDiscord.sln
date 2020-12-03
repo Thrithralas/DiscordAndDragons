@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DungeonsAndDiscord", "DungeonsAndDiscord\DungeonsAndDiscord.csproj", "{7D987062-E582-4D76-B9EE-2A32BB2CB537}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordAndDragons", "DiscordAndDragons\DiscordAndDragons.csproj", "{7D987062-E582-4D76-B9EE-2A32BB2CB537}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

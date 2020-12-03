@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Discord.Addons.Interactive;
 
-namespace DungeonsAndDiscord {
+namespace DiscordAndDragons {
 	public class Startup {
 
 		private DiscordSocketClient _client;

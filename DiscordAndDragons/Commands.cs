@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 
 // ReSharper disable IdentifierTypo
 
-namespace DungeonsAndDiscord {
+namespace DiscordAndDragons {
 	public class Commands : InteractiveBase {
 		
 		internal static readonly string DND5EAPI = "https://www.dnd5eapi.co/api/";

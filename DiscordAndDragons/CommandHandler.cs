@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace DungeonsAndDiscord {
+namespace DiscordAndDragons {
 	public class CommandHandler {
 		private DiscordSocketClient _client;
 		private CommandService _commandService;

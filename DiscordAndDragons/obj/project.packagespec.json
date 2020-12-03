@@ -1,10 +1,10 @@
 ﻿{
   "version": "1.0.0",
   "restore": {
-    "projectUniqueName": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DungeonsAndDiscord\\DungeonsAndDiscord.csproj",
-    "projectName": "DungeonsAndDiscord",
-    "projectPath": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DungeonsAndDiscord\\DungeonsAndDiscord.csproj",
-    "outputPath": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DungeonsAndDiscord\\obj\\",
+    "projectUniqueName": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DiscordAndDragons\\DiscordAndDragons.csproj",
+    "projectName": "DiscordAndDragons",
+    "projectPath": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DiscordAndDragons\\DiscordAndDragons.csproj",
+    "outputPath": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DiscordAndDragons\\obj\\",
     "projectStyle": "PackageReference",
     "fallbackFolders": [
       "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
