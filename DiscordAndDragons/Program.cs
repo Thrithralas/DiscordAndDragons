@@ -10,18 +10,17 @@ namespace DiscordAndDragons {
 
 		private DiscordSocketClient _client;
 		private CommandHandler _handler;
-		private const string Token = "NTA3MjQwNzk3Njk2MDMyNzkw.W9nizg.KvXTtjHvuu-kEfeoOGjOzyzlG88";
 		private IServiceProvider _services;
 
 
-		static void Main() => new Startup().StartAsync().GetAwaiter().GetResult();
+		static void Main(string[] args) => new Startup().StartAsync(args[0]).GetAwaiter().GetResult();
         
-		private async Task StartAsync() {
+		private async Task StartAsync(string token) {
 
 			_client = new DiscordSocketClient(new DiscordSocketConfig());
 			_client.Log += Log;
 
-			await _client.LoginAsync(TokenType.Bot, Token);
+			await _client.LoginAsync(TokenType.Bot, token);
 			await _client.StartAsync();
 
 			_handler = new CommandHandler();

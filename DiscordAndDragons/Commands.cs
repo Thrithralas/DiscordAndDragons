@@ -18,10 +18,12 @@ using HtmlAgilityPack;
 namespace DiscordAndDragons {
 	public class Commands : InteractiveBase {
 		
-		internal static readonly string DND5EAPI = "https://www.dnd5eapi.co/api/";
-		public async Task<string> HttpGet(string URL) {
+		//GET request for website content, parsed with HTML Agility Pack
+		private async Task<string> HttpGet(string URL) {
+			
 			using (var client = new HttpClient()) {
 				using (var request = new HttpRequestMessage()) {
+					
 					request.RequestUri = new Uri(URL);
 					request.Method = HttpMethod.Get;
 
@@ -35,109 +37,131 @@ namespace DiscordAndDragons {
 		[Command("dice")]
 		[Alias("roll", "r")]
 		public async Task Roll([Remainder] string args) {
+
+			//Dice roll validation. Format: MdV+O where M = Multiplier, V = Value, O = offset. M and O are optional and O can be negative.
+			
+			args = args.Replace(" ", "");
 			if (!Regex.IsMatch(args, @"^\d*d\d+((\+|-)\d+)?$")) {
-				await ReplyAsync("Invalid diceroll!");
+				await ReplyAsync("Invalid Dice Roll!");
 				return;
 			}
-			string[] diceAndPlus = args.Split(new char[]{'+', '-'});
-			int extra = diceAndPlus.Length == 2 ? int.Parse(diceAndPlus[1]) : 0;
-			string[] diceParams = diceAndPlus[0].Split('d');
-			int multiplier = diceParams[0] == string.Empty ? 1 : int.Parse(diceParams[0]);
-			if (Regex.IsMatch(args, @"d\d+-\d+$")) extra *= -1;
-			int diceSize = int.Parse(diceParams[1]), nat20 = 0, nat1 = 0;
-			int[] rolls = new int[multiplier];
 			
-			for (int i = 0; i < multiplier; i++) {
-				rolls[i] = RandomNumberGenerator.GetInt32(1, diceSize+1);
-				if (diceSize == 20) {
-					if (rolls[i] == 20) nat20++;
-					if (rolls[i] == 1) nat1++;
-				}
-			}
+			//Temporary storage for string format of dice parameters
+			
+			string[] tempDiceStrings1 = args.Split(new char[]{'+', '-'});
+			string[] tempDiceStrings2 = tempDiceStrings1[0].Split('d');
+			
+			//Generate numeric dice parameters
+			
+			int diceOffset = tempDiceStrings1.Length == 2 ? int.Parse(tempDiceStrings1[1]) : 0;
+			int diceMultiplier = tempDiceStrings2[0] == string.Empty ? 1 : int.Parse(tempDiceStrings2[0]);
+			int diceValue = int.Parse(tempDiceStrings2[1]);
 
-			if (multiplier != 1) {
-				await ReplyAsync($"**Rolls:** {string.Join(", ", rolls)}\n**Sum:** {rolls.Sum()+extra}\n{(diceSize == 20 ? $"**Nat 20s:** {nat20}\n**Nat 1s:** {nat1}" : "")}");
-			}
-			else if (extra != 0){
-				await ReplyAsync($"**Roll**: {rolls[0]}{(extra > 0 ? "+" : "")}{extra} = {rolls[0] + extra}");
-			}
-			else {
-				await ReplyAsync($"**Roll:** {rolls[0]}");
-			}
+			if (Regex.IsMatch(args, @"d\d+-\d+$")) diceOffset *= -1; //Determine sign of Offset
+			
+			int[] rolls = new int[diceMultiplier].Select(_ => RandomNumberGenerator.GetInt32(1, diceValue + 1)).ToArray(); //Generates an array of cryptographically safe numbers
+
+			//Removed counting natural 20s and natural 1s - was unused
+			
+			if (diceMultiplier != 1) await ReplyAsync($"**Rolls:** {string.Join(", ", rolls)}\n**Sum:** {rolls.Sum()+diceOffset}");
+			else if (diceOffset != 0) await ReplyAsync($"**Roll**: {rolls[0]}{(diceOffset > 0 ? "+" : "")}{diceOffset} = {rolls[0] + diceOffset}");
+			else await ReplyAsync($"**Roll:** {rolls[0]}");
 		}
 
+		//Old .spell was deprecated, replaced with .wspell - no longer using generic API, HTML extraction used instead (from wikidot)
+		
 		[Command("spell")]
-		public async Task WSpell([Remainder] string args) {
-			args = args.Replace(' ', '-').Replace("'",  "").ToLower();
+		public async Task Spell([Remainder] string args) {
+			
+			args = args.Replace(' ', '-').Replace("'",  "").ToLower(); //Prepare string for URL
 			var htmlContent = await HttpGet("http://dnd5e.wikidot.com/spell:" + args);
-			if (htmlContent.Contains("does not exist")) {
+			if (htmlContent.Contains("does not exist")) { //Simple way to determine spell not existing
 				await ReplyAsync("Spell not found!");
 				return;
 			}
+			
+			//Establish HTML root node which contains the necessary parameters
+			
 			HtmlDocument doc = new HtmlDocument();
 			doc.LoadHtml(htmlContent);
 			HtmlNode node = doc.GetElementbyId("page-content");
-			string name = doc.DocumentNode.SelectSingleNode("//div[@class='page-title page-header']").InnerText;
-			string[] txt = node.InnerText.Split("\n").Where(s => s != string.Empty).ToArray();
-			string[] edited = txt.Select(str => str.Contains(':') ? "**" + str.Insert(str.IndexOf(':'), "**") : str).Skip(2).Take(4).ToArray();
-			string[] description = txt.Skip(6).Where(str => !str.Contains("At Higher Levels.") && !str.Contains("Spell Lists.")).ToArray();
+			
+			string name = doc.DocumentNode.SelectSingleNode("//div[@class='page-title page-header']").InnerText; //XPath selector for spell name
+			
+			//Format InnerText for display
+			
+			string[] rawData = node.InnerText.Split("\n").Where(s => s != string.Empty).ToArray();
+			string[] formattedData = rawData.Select(str => str.Contains(':') ? "**" + str.Insert(str.IndexOf(':'), "**") : str).Skip(2).Take(4).ToArray();
+			string[] spellDescriptionRaw = rawData.Skip(6).Where(str => !str.Contains("At Higher Levels.") && !str.Contains("Spell Lists.")).ToArray();
+			
+			//Construct the main parts of the embed that don't require further processing
+			
 			EmbedBuilder builder = new EmbedBuilder()
 				.WithAuthor(name)
-				.WithDescription(txt[1])
-				.AddField("Stats", string.Join("\n", edited) + $"\n**Available to Classes:** {new string(txt.Last().Skip(13).ToArray())}");
-			string currText = string.Empty;
-			bool first = true;
-			foreach (string s in description) {
-				if (s.Length + currText.Length < 1022) currText += "\n\n" + s;
+				.WithDescription(rawData[1])
+				.AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData.Last().Skip(13).ToArray())}");
+			
+			//Algorithm to fit as much of the description into a single block as possible. Discord limits 1024 characters per block.
+			
+			string currentField = string.Empty;
+			bool firstEmbedBlock = true;
+			
+			foreach (string chunk in spellDescriptionRaw) {
+				
+				if (chunk.Length + currentField.Length < 1022) currentField += "\n\n" + chunk;
 				else {
-					builder.AddField(first ? "Description" : "‏‏‎ ‎", currText);
-					currText = s;
-					first = false;
+					builder.AddField(firstEmbedBlock ? "Description" : "‏‏‎ ‎", currentField);
+					currentField = chunk;
+					firstEmbedBlock = false;
 				}
+				
 			}
-			if (currText != string.Empty) {
-				builder.AddField(first ? "Description" : "‎‎‏‏‎ ‎", currText);
-			}
+			if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : "‎‎‏‏‎ ‎", currentField);
 
-			string higherLevels = txt.Skip(6).Where(str => str.Contains("At Higher Levels.")).FirstOrDefault();
+			//If spell has higher level variant, extend Embed
+			
+			string higherLevels = rawData.Skip(6).Where(str => str.Contains("At Higher Levels.")).FirstOrDefault();
 			if (higherLevels != default(string)) {
 				builder.AddField("At Higher Levels", new string(higherLevels.Skip(18).ToArray()));
 			}
-			await ReplyAsync(embed: builder.Build());
+			await ReplyAsync(embed: builder.Build()); //Send embed to channel
 		}
 
+		//Calculates weapon hit bonus and damage bonus. Implemented due to Dorian not understanding the difference between the two
+		
 		[Command("calcweapon")]
 		[Alias("cw")]
 		public async Task Cw(string dice, int dexterity, int strength, [Remainder] string args) {
-			StringBuilder stringBuilder = new StringBuilder();
-			int atkbonus = 0;
-			stringBuilder.Append("**ATK BONUS:** ");
-			if (args.Contains("-p")) {
-				if (args.Contains("-f") || (args.Contains("-r") && dexterity > strength)) {
-					atkbonus = dexterity + int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
-				}
-				else {
-					atkbonus = strength + int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
+			
+			/* Possible parameters:
+			 * -f = Weapon is finesse, uses either Dexterity or Strength (whichever is higher)
+			 * -r = Weapon is ranged/thrown, uses Dexterity
+			 * -p = User is proficient with the weapon. In this case -pb is necessary
+			 * -pb:NUM = A single digit number which represents the proficiency bonus of the user (can't be negative)
+			 *
+			 * By default calculator uses Strength
+			 */
+			
+			StringBuilder stringBuilder = new StringBuilder().Append("**ATK BONUS:** ");
+			int hitBonus = 0; 
+			
+			//Calculate raw hit bonus and apply proficiency if necessary
+			
+			if (args.Contains("-f") || args.Contains("-r") && dexterity > strength) hitBonus = dexterity;
+			else hitBonus = strength;
+			if (args.Contains("-p")) hitBonus += int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
 
-				}
-			}
-			else {
-				if (args.Contains("-f") || (args.Contains("-r") && dexterity > strength)) {
-					atkbonus = dexterity;
-				}
-				else {
-					atkbonus = strength;
-
-				}
-			}
-			stringBuilder.AppendLine((atkbonus > 0 ? "+" : "" ) + atkbonus.ToString());
-			stringBuilder.Append("**Damage/Type:** " + dice);
-			int dmgbonus = 0;
+			stringBuilder.AppendLine((hitBonus > 0 ? "+" : "" ) + hitBonus.ToString()).Append("**Damage/Type:** " + dice);
+			
+			//Evaluate damage bonus
+			
+			int damageBonus = 0;
 			if (args.Contains("-p")) {
-				dmgbonus = atkbonus - int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
+				damageBonus = hitBonus - int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
 			}
-			else dmgbonus = Math.Min(0, atkbonus);
-			stringBuilder.AppendLine((dmgbonus > 0 ? "+" : "" ) + (dmgbonus != 0 ? dmgbonus.ToString() : ""));
+			else damageBonus = Math.Min(0, hitBonus); //No attack bonus (or negative) if not proficient
+			
+			stringBuilder.AppendLine((damageBonus > 0 ? "+" : "" ) + (damageBonus != 0 ? damageBonus.ToString() : ""));
 			await ReplyAsync(stringBuilder.ToString());
 		}
 		
