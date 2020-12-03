@@ -3,7 +3,7 @@ A simple discord bot designed to help D&D sessions over discord.
 ## How to use
 1. Generate a Discord Bot Token for yourself
 2. Clone the git repository
-3. Build it. You can do this by opening a command promt or terminal and typing `dotnet publish -c Release -r linux-arm`. You can change the `linux-arm` to `win-x64` for windows. (Must have .NET Core 3.1 installed!)
+3. Build it. You can do this by opening a command promt or terminal and typing `dotnet publish -c Release -r linux-arm`. You can change the `linux-arm` to `win-x64` for windows. An alternative is running `dotnet build`. (Must have .NET Core 3.1 installed!)
 4. Run it. You can do that by navigating to the bin folder DiscordAndDragons/bin/Release/netcoreapp3.1/YOURVERSION and by doing `dotnet DiscordAndDragons.dll YOURTOKENHERE` on Linux and `DiscordAndDragons.exe YOURTOKENHERE` on Windows.
 ## Supported features
 ### Dicerolling
