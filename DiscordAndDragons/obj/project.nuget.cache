@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "5x5BNK222h4dUo8EofV7R/C0ela4vStMZMwY/pUlyK2PX2gETL4l2PTnJ+zZKthjxDmGfb4QtkmHpJUigj7WxQ==",
+  "dgSpecHash": "LmLkU1BNZnQ40UmFvYFIPh8FWhAL4vSBUD8yMhQRGRaIkvUVnxXXVifSWyLjxvK1c4eo/k94toGsnLMClNsOlA==",
   "success": true,
-  "projectFilePath": "D:\\Misc\\CSharp\\DungeonsAndDiscord\\DiscordAndDragons\\DiscordAndDragons.csproj",
+  "projectFilePath": "D:\\Misc\\CSharp\\DiscordAndDragons\\DiscordAndDragons\\DiscordAndDragons.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Thrith\\.nuget\\packages\\discord.addons.passiveinteractive\\2.0.4\\discord.addons.passiveinteractive.2.0.4.nupkg.sha512",
     "C:\\Users\\Thrith\\.nuget\\packages\\discord.net\\2.2.0\\discord.net.2.2.0.nupkg.sha512",

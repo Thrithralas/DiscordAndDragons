@@ -12,7 +12,6 @@ using Discord;
 using Discord.Addons.Interactive;
 using Discord.Commands;
 using HtmlAgilityPack;
-using Newtonsoft.Json;
 
 // ReSharper disable IdentifierTypo
 
@@ -66,39 +65,8 @@ namespace DiscordAndDragons {
 				await ReplyAsync($"**Roll:** {rolls[0]}");
 			}
 		}
-		
-		[Command("spell")]
-		public async Task Spell([Remainder] string args) {
-			args = args.Replace(' ', '-').Replace("'",  "").ToLower();
-			var spell = JsonConvert.DeserializeObject<Dictionary<string, object>>(await HttpGet(DND5EAPI + "spells/" + args + '/'));
-			var spellClassRaw = JsonConvert.DeserializeObject<Dictionary<string, object>>(spell["school"].ToString());
-			string spellClass = char.ToUpper(spellClassRaw["name"].ToString().First()) + spellClassRaw["name"].ToString().Substring(1);
-			string th = spell["level"].ToString().Last() == '1' ? "st" : spell["level"].ToString().Last() == '2' ? "nd" : spell["level"].ToString().Last() == '3' ? "rd" : "th";
-			string[] component = JsonConvert.DeserializeObject<string[]>(spell["components"].ToString());
-			EmbedBuilder embedBuilder = new EmbedBuilder()
-				.WithAuthor((string) spell["name"])
-				.WithDescription(spell["level"].ToString().Equals("0") ? spellClass + " Cantrip" : spell["level"].ToString() + th + "-level " + spellClass)
-				.AddField("Stats", $"**Casting Time:** {spell["casting_time"].ToString()}\n**Range:** {spell["range"].ToString()}\n**Components: **{string.Join(", ", component) + (component.Contains("M") ? $" ({spell["material"].ToString()})" : "")}\n**Duration:** {spell["duration"].ToString()}\n**Requires Concentration:** {((bool) spell["concentration"] ? "Yes" : "No")}\n**Ritual:** {((bool) spell["ritual"] ? "Yes" : "No")}\n**Available to Classes:** {string.Join(", ", JsonConvert.DeserializeObject<Dictionary<string, string>[]>(spell["classes"].ToString()).Select(d => d["name"]))}");
-			string[] description = JsonConvert.DeserializeObject<string[]>(spell["desc"].ToString());
-			string currText = string.Empty;
-			bool first = true;
-			foreach (string s in description) {
-				if (s.Length + currText.Length < 1022) currText += "\n\n" + s;
-				else {
-					embedBuilder.AddField(first ? "Description" : "‏‏‎ ‎", currText);
-					currText = s;
-					first = false;
-				}
-			}
-			if (currText != string.Empty) {
-				embedBuilder.AddField(first ? "Description" : "‎‎‏‏‎ ‎", currText);
-			}
-			if (spell.ContainsKey("higher_level")) embedBuilder.AddField("At Higher Levels", JsonConvert.DeserializeObject<string[]>(spell["higher_level"].ToString())[0]);
-			await ReplyAsync(embed: embedBuilder.Build());
-		}
 
-		[Command("wikidotspell")]
-		[Alias("wspell", "ws")]
+		[Command("spell")]
 		public async Task WSpell([Remainder] string args) {
 			args = args.Replace(' ', '-').Replace("'",  "").ToLower();
 			var htmlContent = await HttpGet("http://dnd5e.wikidot.com/spell:" + args);
