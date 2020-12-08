@@ -20,18 +20,10 @@ namespace DiscordAndDragons {
 		
 		//GET request for website content, parsed with HTML Agility Pack
 		private async Task<string> HttpGet(string URL) {
-			
-			using (var client = new HttpClient()) {
-				using (var request = new HttpRequestMessage()) {
-					
-					request.RequestUri = new Uri(URL);
-					request.Method = HttpMethod.Get;
-
-					using (var response = await client.SendAsync(request)) {
-						return await response.Content.ReadAsStringAsync();
-					}
-				}
-			}
+			using var client = new HttpClient();
+			using var request = new HttpRequestMessage {RequestUri = new Uri(URL), Method = HttpMethod.Get};
+			using var response = await client.SendAsync(request);
+			return await response.Content.ReadAsStringAsync();
 		}
 
 		[Command("dice")]
@@ -48,7 +40,7 @@ namespace DiscordAndDragons {
 			
 			//Temporary storage for string format of dice parameters
 			
-			string[] tempDiceStrings1 = args.Split(new char[]{'+', '-'});
+			string[] tempDiceStrings1 = args.Split('+', '-');
 			string[] tempDiceStrings2 = tempDiceStrings1[0].Split('d');
 			
 			//Generate numeric dice parameters
@@ -139,7 +131,7 @@ namespace DiscordAndDragons {
 
 			//If spell has higher level variant, extend Embed
 			
-			string higherLevels = rawData.Skip(6).Where(str => str.Contains("At Higher Levels.")).FirstOrDefault();
+			string higherLevels = rawData.Skip(6).FirstOrDefault(str => str.Contains("At Higher Levels."));
 			if (higherLevels != default(string)) {
 				builder.AddField("At Higher Levels", new string(higherLevels.Skip(18).ToArray()));
 			}
@@ -162,21 +154,21 @@ namespace DiscordAndDragons {
 			 */
 			
 			StringBuilder stringBuilder = new StringBuilder().Append("**ATK BONUS:** ");
-			int hitBonus = 0; 
+			int hitBonus; 
 			
 			//Calculate raw hit bonus and apply proficiency if necessary
 			
 			if (args.Contains("-f") || args.Contains("-r") && dexterity > strength) hitBonus = dexterity;
 			else hitBonus = strength;
-			if (args.Contains("-p")) hitBonus += int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
+			if (args.Contains("-p")) hitBonus += int.Parse(args.Substring(args.IndexOf("-pb:", StringComparison.Ordinal)).Skip(4).First().ToString());
 
-			stringBuilder.AppendLine((hitBonus > 0 ? "+" : "" ) + hitBonus.ToString()).Append("**Damage/Type:** " + dice);
+			stringBuilder.AppendLine((hitBonus > 0 ? "+" : "" ) + hitBonus).Append("**Damage/Type:** " + dice);
 			
 			//Evaluate damage bonus
 			
-			int damageBonus = 0;
+			int damageBonus;
 			if (args.Contains("-p")) {
-				damageBonus = hitBonus - int.Parse(args.Substring(args.IndexOf("-pb:")).Skip(4).First().ToString());
+				damageBonus = hitBonus - int.Parse(args.Substring(args.IndexOf("-pb:", StringComparison.Ordinal)).Skip(4).First().ToString());
 			}
 			else damageBonus = Math.Min(0, hitBonus); //No attack bonus (or negative) if not proficient
 			
