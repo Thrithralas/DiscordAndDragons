@@ -85,7 +85,13 @@ namespace DiscordAndDragons {
 			HtmlDocument doc = new HtmlDocument();
 			doc.LoadHtml(htmlContent);
 			HtmlNode node = doc.GetElementbyId("page-content");
+
+			//Recursive enumeration to remove table headers
 			
+			foreach (var value in node.RecursiveEnumerator()) {
+				if (value.OriginalName == "th") value.ParentNode.RemoveChild(value);
+			}
+
 			string name = doc.DocumentNode.SelectSingleNode("//div[@class='page-title page-header']").InnerText; //XPath selector for spell name
 			
 			//Format InnerText for display
@@ -105,16 +111,29 @@ namespace DiscordAndDragons {
 			
 			string currentField = string.Empty;
 			bool firstEmbedBlock = true;
-			
+			bool arraySequence = false;
+			const int arrayDetectionTreshold = 10;
+
 			foreach (string chunk in spellDescriptionRaw) {
 				
-				if (chunk.Length + currentField.Length < 1022) currentField += "\n\n" + chunk;
-				else {
+				//Implement array detection for spells like Command and Chaos Bolt
+				
+				if (chunk.Length < arrayDetectionTreshold) {
+					if (arraySequence) {
+						currentField += " " + chunk;
+						arraySequence = false;
+					}
+					else arraySequence = true;
+				}
+
+				if (arraySequence) currentField += "\n\n**" + chunk + (chunk.Last() == '.' ? "" : " - ") + "**"; //Insecure in case of array overflow (1024 characters) - will tackle if problem
+				else if (chunk.Length + currentField.Length < 1022 && chunk.Length >= arrayDetectionTreshold) currentField += "\n\n" + chunk;
+				else if (chunk.Length >= arrayDetectionTreshold) {
 					builder.AddField(firstEmbedBlock ? "Description" : "‏‏‎ ‎", currentField);
 					currentField = chunk;
 					firstEmbedBlock = false;
 				}
-				
+
 			}
 			if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : "‎‎‏‏‎ ‎", currentField);
 
