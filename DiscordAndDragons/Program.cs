@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Discord.Addons.Interactive;
@@ -16,6 +17,8 @@ namespace DiscordAndDragons {
 		static void Main(string[] args) => new Startup().StartAsync(args[0]).GetAwaiter().GetResult();
         
 		private async Task StartAsync(string token) {
+
+			Directory.CreateDirectory("./cache/spells"); //Creates directory for spell caching
 
 			_client = new DiscordSocketClient(new DiscordSocketConfig());
 			_client.Log += Log;
