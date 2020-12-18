@@ -1,18 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
+using Discord;
 using HtmlAgilityPack;
 
 namespace DiscordAndDragons {
 	public static class HelperFunctions {
+
+		internal static readonly int ArrayDetectionThreshold = 10; //ArrayDetectionThreshold is now a static constant
 		
 		//Recursive Enumerator for HtmlNode
-		public static IEnumerable<HtmlNode> RecursiveEnumerator(this HtmlNode node) {
+		internal static IEnumerable<HtmlNode> RecursiveEnumerator(this HtmlNode node) {
 			Queue<HtmlNode> nodeQueue = new Queue<HtmlNode>(node.ChildNodes);
 			while (nodeQueue.TryDequeue(out HtmlNode current)) {
 				yield return current;
@@ -67,6 +71,38 @@ namespace DiscordAndDragons {
 				Console.WriteLine(e.Message);
 			}
 			return objectOutput;
+		}
+
+		//Moved embed conversion to HelperFunctions.cs and extracted it to method 
+		internal static EmbedBuilder ToEmbed(this IEnumerable<string> text, EmbedBuilder builder = null) {
+			
+			builder ??= new EmbedBuilder();
+			
+			string currentField = string.Empty;
+			bool firstEmbedBlock = true;
+			bool arraySequence = false;
+
+			foreach (string chunk in text) {
+				
+				if (chunk.Length < ArrayDetectionThreshold) {
+					if (arraySequence) {
+						currentField += " " + chunk;
+						arraySequence = false;
+					}
+					else arraySequence = true;
+				}
+
+				if (arraySequence) currentField += "\n\n**" + chunk + (chunk.Last() == '.' ? "" : " - ") + "**"; //Insecure in case of array overflow (1024 characters) - will tackle if problem
+				else if (chunk.Length + currentField.Length < 1022 && chunk.Length >= ArrayDetectionThreshold) currentField += "\n\n" + chunk;
+				else if (chunk.Length >= ArrayDetectionThreshold) {
+					builder.AddField(firstEmbedBlock ? "Description" : "‏‏‎ ‎", currentField);
+					currentField = chunk;
+					firstEmbedBlock = false;
+				}
+			}
+
+			if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : "‎‎‏‏‎ ‎", currentField);
+			return builder;
 		}
 	}
 }

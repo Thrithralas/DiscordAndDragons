@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -85,37 +86,12 @@ namespace DiscordAndDragons {
 
 				//Construct the main parts of the embed that don't require further processing
 
-				EmbedBuilder builder = new EmbedBuilder().WithAuthor(name).WithDescription(rawData[1]).AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData.Last().Skip(13).ToArray())}");
-
-				//Algorithm to fit as much of the description into a single block as possible. Discord limits 1024 characters per block.
-
-				string currentField = string.Empty;
-				bool firstEmbedBlock = true;
-				bool arraySequence = false;
-				const int arrayDetectionTreshold = 10;
-
-				foreach (string chunk in spellDescriptionRaw) {
-					//Implement array detection for spells like Command and Chaos Bolt
-
-					if (chunk.Length < arrayDetectionTreshold) {
-						if (arraySequence) {
-							currentField += " " + chunk;
-							arraySequence = false;
-						}
-						else arraySequence = true;
-					}
-
-					if (arraySequence) currentField += "\n\n**" + chunk + (chunk.Last() == '.' ? "" : " - ") + "**"; //Insecure in case of array overflow (1024 characters) - will tackle if problem
-					else if (chunk.Length + currentField.Length < 1022 && chunk.Length >= arrayDetectionTreshold) currentField += "\n\n" + chunk;
-					else if (chunk.Length >= arrayDetectionTreshold) {
-						builder.AddField(firstEmbedBlock ? "Description" : "‏‏‎ ‎", currentField);
-						currentField = chunk;
-						firstEmbedBlock = false;
-					}
-				}
-
-				if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : "‎‎‏‏‎ ‎", currentField);
-
+				EmbedBuilder builder = new EmbedBuilder()
+					.WithAuthor(name)
+					.WithDescription(rawData[1])
+					.AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData.Last().Skip(13).ToArray())}");
+				spellDescriptionRaw.ToEmbed(builder);
+				
 				//If spell has higher level variant, extend Embed
 
 				string higherLevels = rawData.Skip(6).FirstOrDefault(str => str.Contains("At Higher Levels."));
@@ -168,6 +144,47 @@ namespace DiscordAndDragons {
 
 			stringBuilder.AppendLine((damageBonus > 0 ? "+" : "") + (damageBonus != 0 ? damageBonus.ToString() : ""));
 			await ReplyAsync(stringBuilder.ToString());
+		}
+
+		[Command("feature", RunMode = RunMode.Async)]
+		public async Task Feature(string Class, [Remainder] string args) {
+
+			//Argument here represents the name of the feature that was requested
+			
+			string subClass = "";
+			string argument = args;
+			
+			//Subclass detection - will add a "**Subclass:** {SubclassName}**" into the embed
+			
+			if (args.Contains("s:")) {
+				subClass = args.Split(' ')[0].Substring(2).Replace(' ', '-').Replace("'", "").ToLower();
+				argument = string.Join(' ', args.Split(' ').Skip(1));
+			}
+
+			// Will add caching later probably, so we don't stress the servers - considering class pages are magnitudes larger
+			
+			string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/" + (subClass == "" ? Class : Class + ':' + subClass));
+			
+			HtmlDocument doc = new HtmlDocument();
+			doc.LoadHtml(htmlContent);
+			HtmlNode node = doc.DocumentNode.SelectSingleNode($@"//span[. ='{argument}']").ParentNode; //XPath for selection of correct Node
+
+			EmbedBuilder builder = new EmbedBuilder()
+				.WithAuthor(argument)
+				//Turns the whole string to lowercase, except the first letter which is uppercase
+				.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower().Substring(1)}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower().Substring(1)}" : "")}");
+
+			//Since all features share one common parent, we have to go by siblings
+			//A while loop could also work fyi
+			
+			List<string> messages = new List<string>();
+			do {
+				node = node.NextSibling;
+				if (node.OriginalName != "table") messages.Add(node.InnerText.Replace("\n", ""));
+			} while (!node.NextSibling.OriginalName.Contains('h'));
+
+			messages.Where(s => s != "").ToEmbed(builder); //New function for embed building. Letf in array detection, no conflicts so far.
+			await ReplyAsync(embed: builder.Build());
 		}
 
 
