@@ -16,10 +16,12 @@ Examples:
 
 You can mix and match all of these examples. Dice values aren't restricted to D&D dice (you can also roll a d7 or a d666)
 ### Spell Data
-The bot can get spell data by extracting the source code of the D&D 5E Wikidot site. This can be done by doing `.spell [spellname]`. This method replaced the deprecated D&D 5E API method, which lacked a significant amount of spells due to legal reasons, apparently.
+The bot can get spell data by extracting it from the HTML code of the D&D 5E Wikidot site (now also implements caching in XML). This can be done by doing `.spell [spellname]`. This method replaced the deprecated D&D 5E API method, which lacked a significant amount of spells due to legal reasons, apparently.
 ### Weapon Calculation
 This command allows you to calculate the hit bonus and damage bonus of weapons. This can be done by doing `.cw [dice] [dexterity modifier] [strength modifier] [misc parameters]`. Misc paramteres are:
 * -f - This means that the weapon is Finesse
 * -r - This means that the weapon is Thrown or Ranged
 * -p - This means that the user is proficient with the weapon
 * -pb:[num] - This represents the proficiency bonus of the user
+### Feature Data
+The bot can get class feature data by extracting it from the HTML code of the D&D 5E Wikidot site. This can be done by doing `.feature [classname] [featurename]`. Alternatively, subclass features can be acquired by doing `.feature [classname] s:[subclassname] [featurename]`. None of these implement caching as of 2020-12-18.
