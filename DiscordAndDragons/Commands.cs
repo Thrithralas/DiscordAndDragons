@@ -161,30 +161,63 @@ namespace DiscordAndDragons {
 				argument = string.Join(' ', args.Split(' ').Skip(1));
 			}
 
-			// Will add caching later probably, so we don't stress the servers - considering class pages are magnitudes larger
+			if (Class.Contains(':')) {
+				string[] split = Class.Split(':');
+				Class = split[0].ToLower();
+				subClass = split[1].ToLower();
+			}
 			
-			string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/" + (subClass == "" ? Class : Class + ':' + subClass));
+			string idealArgument = "";
+			foreach (string s in argument.Split(' ')) {
+				if (s == "the" || s == "or" || s == "of") {
+					idealArgument += $"{s} ";
+					continue;
+				}
+				string lower = s.ToLower();
+				idealArgument += char.ToUpper(lower[0]) + lower.Substring(1) + " ";
+			}
+
+			idealArgument = idealArgument[..^1];
+
+			//Implemented Caching
+			argument = argument.Replace(":", "").Replace(" ", "-");
+			string path = "./cache/features/" + argument + ".xml";
+			if (!File.Exists(path)) {
+				
+				string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/" + (subClass == "" ? Class : Class + ':' + subClass));
+
+				HtmlDocument doc = new HtmlDocument();
+				doc.LoadHtml(htmlContent);
+				HtmlNode node = doc.DocumentNode.SelectSingleNode($@"//span[. ='{idealArgument}']"); //XPath for selection of correct Node
+
+				if (node == null) {
+					await ReplyAsync("No feature found!");
+					return;
+				}
+				node = node.ParentNode;
+
+				EmbedBuilder builder = new EmbedBuilder()
+					.WithAuthor(idealArgument)
+					//Turns the whole string to lowercase, except the first letter which is uppercase
+					.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower().Substring(1)}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower().Substring(1)}" : "")}");
+
+				//Since all features share one common parent, we have to go by siblings
+				//A while loop could also work fyi
 			
-			HtmlDocument doc = new HtmlDocument();
-			doc.LoadHtml(htmlContent);
-			HtmlNode node = doc.DocumentNode.SelectSingleNode($@"//span[. ='{argument}']").ParentNode; //XPath for selection of correct Node
+				List<string> messages = new List<string>();
+				do {
+					node = node.NextSibling;
+					if (node.OriginalName != "table") messages.Add(node.InnerText.Replace("\n", ""));
+				} while (!node.NextSibling.OriginalName.Contains('h'));
 
-			EmbedBuilder builder = new EmbedBuilder()
-				.WithAuthor(argument)
-				//Turns the whole string to lowercase, except the first letter which is uppercase
-				.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower().Substring(1)}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower().Substring(1)}" : "")}");
+				messages.Where(s => s != "").ToEmbed(builder); //New function for embed building. Letf in array detection, no conflicts so far.
+				HelperFunctions.Serialize(builder, path);
+				await ReplyAsync(embed: builder.Build());
+				return;
+			}
 
-			//Since all features share one common parent, we have to go by siblings
-			//A while loop could also work fyi
-			
-			List<string> messages = new List<string>();
-			do {
-				node = node.NextSibling;
-				if (node.OriginalName != "table") messages.Add(node.InnerText.Replace("\n", ""));
-			} while (!node.NextSibling.OriginalName.Contains('h'));
+			await ReplyAsync(embed: HelperFunctions.Deserialize<EmbedBuilder>(path).Build());
 
-			messages.Where(s => s != "").ToEmbed(builder); //New function for embed building. Letf in array detection, no conflicts so far.
-			await ReplyAsync(embed: builder.Build());
 		}
 
 

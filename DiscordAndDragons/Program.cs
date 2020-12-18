@@ -18,7 +18,9 @@ namespace DiscordAndDragons {
         
 		private async Task StartAsync(string token) {
 
-			Directory.CreateDirectory("./cache/spells"); //Creates directory for spell caching
+			//Creates cache directories
+			Directory.CreateDirectory("./cache/spells");
+			Directory.CreateDirectory("./cache/features"); 
 
 			_client = new DiscordSocketClient(new DiscordSocketConfig());
 			_client.Log += Log;
@@ -38,7 +40,7 @@ namespace DiscordAndDragons {
 		}
 
 		private async Task Log(LogMessage l) {
-			Console.WriteLine(l.Message);
+			await Console.Out.WriteLineAsync(l.Message);
 		}
 	}
 }
