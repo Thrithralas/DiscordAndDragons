@@ -1,5 +1,7 @@
 # DiscordAndDragons
 A simple discord bot designed to help D&D sessions over discord.
+## After building the bot
+Since the sourcode of the bot is public, you must provide your own discord bot token. The token must be provided as a runtime parameter for the bot.
 ## Supported features
 ### Dicerolling
 The bot can simulate most neccessary dice rolls in D&D. The command for rolling dice is .r .roll or .dice (prefix can be changed in `Program.cs`)  
