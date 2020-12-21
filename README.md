@@ -1,10 +1,5 @@
 # DiscordAndDragons
 A simple discord bot designed to help D&D sessions over discord.
-## How to use
-1. Generate a Discord Bot Token for yourself
-2. Clone the git repository
-3. Build it. You can do this by opening a command promt or terminal and typing `dotnet publish -c Release -r linux-arm`. You can change the `linux-arm` to `win-x64` for windows. An alternative is running `dotnet build`. (Must have .NET Core 3.1 installed!)
-4. Run it. You can do that by navigating to the bin folder DiscordAndDragons/bin/Release/netcoreapp3.1/YOURVERSION and by doing `dotnet DiscordAndDragons.dll YOURTOKENHERE` on Linux and `DiscordAndDragons.exe YOURTOKENHERE` on Windows.
 ## Supported features
 ### Dicerolling
 The bot can simulate most neccessary dice rolls in D&D. The command for rolling dice is .r .roll or .dice (prefix can be changed in `Program.cs`)  
@@ -25,3 +20,6 @@ This command allows you to calculate the hit bonus and damage bonus of weapons. 
 * -pb:[num] - This represents the proficiency bonus of the user
 ### Feature Data
 The bot can get class feature data by extracting it from the HTML code of the D&D 5E Wikidot site. This can be done by doing `.feature [classname] [featurename]`. Alternatively, subclass features can be acquired by doing `.feature [classname] s:[subclassname] [featurename]`. None of these implement caching as of 2020-12-18.
+## Beta Features
+### PDF Parser and Character Sheet Displayer
+These features are still highly in development and are available in the `beta-characterhseet` branch. A PDF can be parsed by doing `.pchs` and attaching a character sheet PDF to the message. The sheet must be fully filled out. Once the parsing is finished, it can be viewed as an embed via `.dchs [character name]`. Character Name is case sensitive and won't work with excess spaces. The object is serialized to XML after parsing, which can be found in the cache folder.
