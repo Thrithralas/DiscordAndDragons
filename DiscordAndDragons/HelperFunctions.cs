@@ -17,8 +17,8 @@ namespace DiscordAndDragons {
 		
 		//Recursive Enumerator for HtmlNode
 		internal static IEnumerable<HtmlNode> RecursiveEnumerator(this HtmlNode node) {
-			Queue<HtmlNode> nodeQueue = new Queue<HtmlNode>(node.ChildNodes);
-			while (nodeQueue.TryDequeue(out HtmlNode current)) {
+			Queue<HtmlNode> nodeQueue = new(node.ChildNodes);
+			while (nodeQueue.TryDequeue(out HtmlNode? current)) {
 				yield return current;
 				foreach (var childNode in current.ChildNodes) {
 					nodeQueue.Enqueue(childNode);
@@ -39,9 +39,9 @@ namespace DiscordAndDragons {
 			
 			if (serializableObject == null) return;
 			try {
-				XmlDocument document = new XmlDocument();
-				XmlSerializer serializer = new XmlSerializer(typeof(T));
-				using MemoryStream memStream = new MemoryStream();
+				XmlDocument document = new();
+				XmlSerializer serializer = new(typeof(T));
+				using MemoryStream memStream = new();
 				serializer.Serialize(memStream, serializableObject);
 				memStream.Position = 0;
 				document.Load(memStream);
@@ -58,26 +58,23 @@ namespace DiscordAndDragons {
 			T objectOutput = default;
 
 			try {
-				XmlDocument document = new XmlDocument();
+				XmlDocument document = new();
 				document.Load(fileName);
 				string outerXml = document.OuterXml;
 
-				using StringReader reader = new StringReader(outerXml);
-				XmlSerializer serializer = new XmlSerializer(typeof(T));
+				using StringReader reader = new(outerXml);
+				XmlSerializer serializer = new(typeof(T));
 				using XmlReader xmlReader = new XmlTextReader(reader);
-				objectOutput = (T) serializer.Deserialize(xmlReader);
+				objectOutput = (T) serializer.Deserialize(xmlReader)!;
 			}
 			catch (Exception e) {
 				Console.WriteLine(e.Message);
 			}
-			return objectOutput;
+			return objectOutput!;
 		}
 
 		//Moved embed conversion to HelperFunctions.cs and extracted it to method 
-		internal static EmbedBuilder ToEmbed(this IEnumerable<string> text, EmbedBuilder builder = null) {
-			
-			builder ??= new EmbedBuilder();
-			
+		internal static EmbedBuilder ToEmbed(this IEnumerable<string> text, EmbedBuilder builder = null!) {
 			string currentField = string.Empty;
 			bool firstEmbedBlock = true;
 			bool arraySequence = false;
@@ -95,13 +92,13 @@ namespace DiscordAndDragons {
 				if (arraySequence) currentField += "\n\n**" + chunk + (chunk.Last() == '.' ? "" : " - ") + "**"; //Insecure in case of array overflow (1024 characters) - will tackle if problem
 				else if (chunk.Length + currentField.Length < 1022 && chunk.Length >= ArrayDetectionThreshold) currentField += "\n\n" + chunk;
 				else if (chunk.Length >= ArrayDetectionThreshold) {
-					builder.AddField(firstEmbedBlock ? "Description" : "‏‏‎ ‎", currentField);
+					builder.AddField(firstEmbedBlock ? "Description" : " ", currentField);
 					currentField = chunk;
 					firstEmbedBlock = false;
 				}
 			}
 
-			if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : "‎‎‏‏‎ ‎", currentField);
+			if (currentField != string.Empty) builder.AddField(firstEmbedBlock ? "Description" : " ", currentField);
 			return builder;
 		}
 	}
