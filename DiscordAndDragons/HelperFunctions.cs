@@ -54,7 +54,7 @@ namespace DiscordAndDragons {
 
 		internal static T Deserialize<T>(string fileName) {
 
-			if (string.IsNullOrEmpty(fileName)) return default;
+			if (string.IsNullOrEmpty(fileName)) return default!;
 			T objectOutput = default;
 
 			try {
@@ -71,6 +71,10 @@ namespace DiscordAndDragons {
 				Console.WriteLine(e.Message);
 			}
 			return objectOutput!;
+		}
+
+		internal static IEnumerable<string> RemoveEmpty(this IEnumerable<string> enumerable) {
+			return enumerable.Where(t => !string.IsNullOrEmpty(t));
 		}
 
 		//Moved embed conversion to HelperFunctions.cs and extracted it to method 

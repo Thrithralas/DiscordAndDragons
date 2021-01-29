@@ -58,7 +58,7 @@ namespace DiscordAndDragons {
 			if (!File.Exists("./cache/spells/" + args + ".xml")) {
 
 				var htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/spell:" + args);
-				if (htmlContent.Contains("does not exist")) {
+				if (htmlContent == "404") {
 					//Simple way to determine spell not existing
 					await ReplyAsync("Spell not found!");
 					return;
@@ -66,7 +66,7 @@ namespace DiscordAndDragons {
 
 				//Establish HTML root node which contains the necessary parameters
 
-				HtmlDocument doc = new HtmlDocument();
+				HtmlDocument doc = new();
 				doc.LoadHtml(htmlContent);
 				HtmlNode node = doc.GetElementbyId("page-content");
 
@@ -80,23 +80,23 @@ namespace DiscordAndDragons {
 
 				//Format InnerText for display
 
-				string[] rawData = node.InnerText.Split("\n").Where(s => s != string.Empty).ToArray();
-				string[] formattedData = rawData.Select(str => str.Contains(':') ? "**" + str.Insert(str.IndexOf(':'), "**") : str).Skip(2).Take(4).ToArray();
-				string[] spellDescriptionRaw = rawData.Skip(6).Where(str => !str.Contains("At Higher Levels.") && !str.Contains("Spell Lists.")).ToArray();
+				string[] rawData = node.InnerText.Split("\n").RemoveEmpty().ToArray();
+				string[] formattedData = rawData.Select(str => str.Contains(':') ? "**" + str.Insert(str.IndexOf(':'), "**") : str).ToArray()[2..6];
+				string[] spellDescriptionRaw = rawData[6..].Where(str => !str.Contains("At Higher Levels.") && !str.Contains("Spell Lists.")).ToArray();
 
 				//Construct the main parts of the embed that don't require further processing
 
 				EmbedBuilder builder = new EmbedBuilder()
 					.WithAuthor(name)
 					.WithDescription(rawData[1])
-					.AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData.Last().Skip(13).ToArray())}");
+					.AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData[^1].AsSpan()[13..])}");
 				spellDescriptionRaw.ToEmbed(builder);
 				
 				//If spell has higher level variant, extend Embed
 
-				string higherLevels = rawData.Skip(6).FirstOrDefault(str => str.Contains("At Higher Levels."));
+				string? higherLevels = rawData[6..].FirstOrDefault(str => str.Contains("At Higher Levels."));
 				if (higherLevels != default) {
-					builder.AddField("At Higher Levels", new string(higherLevels.Skip(18).ToArray()));
+					builder.AddField("At Higher Levels", higherLevels[18..]);
 				}
 
 				HelperFunctions.Serialize(builder, "./cache/spells/" + args + ".xml");
@@ -109,42 +109,6 @@ namespace DiscordAndDragons {
 
 		}
 
-		//Calculates weapon hit bonus and damage bonus. Implemented due to Dorian not understanding the difference between the two
-
-		[Command("calcweapon")]
-		[Alias("cw")]
-		public async Task Cw(string dice, int dexterity, int strength, [Remainder] string args) {
-			/* Possible parameters:
-			 * -f = Weapon is finesse, uses either Dexterity or Strength (whichever is higher)
-			 * -r = Weapon is ranged/thrown, uses Dexterity
-			 * -p = User is proficient with the weapon. In this case -pb is necessary
-			 * -pb:NUM = A single digit number which represents the proficiency bonus of the user (can't be negative)
-			 *
-			 * By default calculator uses Strength
-			 */
-
-			StringBuilder stringBuilder = new StringBuilder().Append("**ATK BONUS:** ");
-			int hitBonus;
-
-			//Calculate raw hit bonus and apply proficiency if necessary
-
-			if (args.Contains("-f") || args.Contains("-r") && dexterity > strength) hitBonus = dexterity;
-			else hitBonus = strength;
-			if (args.Contains("-p")) hitBonus += int.Parse(args.Substring(args.IndexOf("-pb:", StringComparison.Ordinal)).Skip(4).First().ToString());
-
-			stringBuilder.AppendLine((hitBonus > 0 ? "+" : "") + hitBonus).Append("**Damage/Type:** " + dice);
-
-			//Evaluate damage bonus
-
-			int damageBonus;
-			if (args.Contains("-p")) {
-				damageBonus = hitBonus - int.Parse(args.Substring(args.IndexOf("-pb:", StringComparison.Ordinal)).Skip(4).First().ToString());
-			}
-			else damageBonus = Math.Min(0, hitBonus); //No attack bonus (or negative) if not proficient
-
-			stringBuilder.AppendLine((damageBonus > 0 ? "+" : "") + (damageBonus != 0 ? damageBonus.ToString() : ""));
-			await ReplyAsync(stringBuilder.ToString());
-		}
 
 		[Command("feature", RunMode = RunMode.Async)]
 		public async Task Feature(string Class, [Remainder] string args) {
@@ -157,8 +121,8 @@ namespace DiscordAndDragons {
 			//Subclass detection - will add a "**Subclass:** {SubclassName}**" into the embed
 			
 			if (args.Contains("s:")) {
-				subClass = args.Split(' ')[0].Substring(2).Replace(' ', '-').Replace("'", "").ToLower();
-				argument = string.Join(' ', args.Split(' ').Skip(1));
+				subClass = args.Split(' ')[0][2..].Replace(' ', '-').Replace("'", "").ToLower();
+				argument = string.Join(' ', args.Split(' ')[1..]);
 			}
 
 			if (Class.Contains(':')) {
@@ -174,7 +138,7 @@ namespace DiscordAndDragons {
 					continue;
 				}
 				string lower = s.ToLower();
-				idealArgument += char.ToUpper(lower[0]) + lower.Substring(1) + " ";
+				idealArgument += char.ToUpper(lower[0]) + lower[1..] + " ";
 			}
 
 			idealArgument = idealArgument[..^1];
@@ -199,12 +163,12 @@ namespace DiscordAndDragons {
 				EmbedBuilder builder = new EmbedBuilder()
 					.WithAuthor(idealArgument)
 					//Turns the whole string to lowercase, except the first letter which is uppercase
-					.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower().Substring(1)}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower().Substring(1)}" : "")}");
+					.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower()[1..]}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower()[1..]}" : "")}");
 
 				//Since all features share one common parent, we have to go by siblings
 				//A while loop could also work fyi
 			
-				List<string> messages = new List<string>();
+				List<string> messages = new();
 				do {
 					node = node.NextSibling;
 					if (node.OriginalName != "table") messages.Add(node.InnerText.Replace("\n", ""));
@@ -217,6 +181,62 @@ namespace DiscordAndDragons {
 			}
 
 			await ReplyAsync(embed: HelperFunctions.Deserialize<EmbedBuilder>(path).Build());
+
+		}
+
+		[Command("spells", RunMode = RunMode.Async)]
+		public async Task GetSpells(string Class, int level, int page = 1) {
+
+			string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/spells:" + Class.ToLower());
+			if (htmlContent == "404") {
+				await ReplyAsync("Incorrect class!");
+				return;
+			}
+
+			//Establish HTML root node which contains the necessary parameters
+
+			HtmlDocument document = new();
+			document.LoadHtml(htmlContent);
+			HtmlNode node = document.DocumentNode.SelectSingleNode("//div[@class='yui-content']");
+			
+			//Get correct table
+
+			HtmlNode tableNode = node.SelectSingleNode($"//div[@id='wiki-tab-0-{level}']");
+			if (tableNode == null) {
+				await ReplyAsync("Illegal level!");
+				return;
+			}
+
+			tableNode = tableNode.FirstChild.ChildNodes[1];
+			
+			//Breaks children into blocks of 10
+
+			IList<HtmlNode> spellNodes = tableNode.ChildNodes;
+			spellNodes = spellNodes.Where(n => !(n is HtmlTextNode)).ToList();
+			spellNodes.RemoveAt(0); //Removes header
+
+			int maxPages = spellNodes.Count / 10;
+			if (spellNodes.Count % 10 != 0) maxPages++;
+			page = page % (maxPages + 1) - 1;
+
+			//Initialize fields
+
+			EmbedFieldBuilder spellName = new() {IsInline = true, Name = "Name"};
+			EmbedFieldBuilder spellRange = new() {IsInline = true, Name = "Range"};;
+			EmbedFieldBuilder spellCT = new() {IsInline = true, Name = "Casting Time"};;
+
+			for (int i = page * 10; i < page * 10 + (page + 1 == maxPages ? spellNodes.Count % 10 : 10); i++) {
+				spellName.Value += spellNodes[i].ChildNodes[1].ChildNodes[0].InnerText + '\n';
+				spellRange.Value += spellNodes[i].ChildNodes[7].InnerText + '\n';
+				spellCT.Value += spellNodes[i].ChildNodes[5].InnerText + '\n';
+			}
+
+			var builder = new EmbedBuilder().AddField(spellName).AddField(spellRange).AddField(spellCT);
+			builder.Title = char.ToUpper(Class[0]) + Class[1..].ToLower();
+			if (level == 0) builder.Title += " Cantrips";
+			else builder.Title += $" Level {level} Spells";
+			builder.Title += $" (Page {page+1}/{maxPages})";
+			await ReplyAsync(embed: builder.Build());
 
 		}
 
