@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
@@ -73,45 +71,67 @@ namespace DiscordAndDragons {
 				//Recursive enumeration to remove table headers
 
 				foreach (var value in node.RecursiveEnumerator()) {
-					if (value.OriginalName == "th") value.ParentNode.RemoveChild(value);
+					if (value.OriginalName == "th" || string.IsNullOrEmpty(value.InnerText) || Regex.IsMatch(value.InnerText, @"^\n{2,}$")) value.ParentNode.RemoveChild(value);
 				}
 
 				string name = doc.DocumentNode.SelectSingleNode("//div[@class='page-title page-header']").InnerText; //XPath selector for spell name
+				node.RemoveChild(node.FirstChild);
 
-				//Format InnerText for display
-
-				string[] rawData = node.InnerText.Split("\n").RemoveEmpty().ToArray();
-				string[] formattedData = rawData.Select(str => str.Contains(':') ? "**" + str.Insert(str.IndexOf(':'), "**") : str).ToArray()[2..6];
-				string[] spellDescriptionRaw = rawData[6..].Where(str => !str.Contains("At Higher Levels.") && !str.Contains("Spell Lists.")).ToArray();
-
-				//Construct the main parts of the embed that don't require further processing
-
+				//Build predetermined part of the Embed
+				
 				EmbedBuilder builder = new EmbedBuilder()
 					.WithAuthor(name)
-					.WithDescription(rawData[1])
-					.AddField("Stats", string.Join("\n", formattedData) + $"\n**Available to Classes:** {new string(rawData[^1].AsSpan()[13..])}");
-				spellDescriptionRaw.ToEmbed(builder);
+					.WithDescription(node.ChildNodes[1].InnerText)
+					.AddField("Stats", node.ChildNodes[3].InnerHtml.Replace("<strong>", "**").Replace("</strong>", "**") + $"\n**Available to Classes:** {node.LastChild.PreviousSibling.InnerText[13..]}");
+
+				//Evaluate Description
 				
-				//If spell has higher level variant, extend Embed
-
-				string? higherLevels = rawData[6..].FirstOrDefault(str => str.Contains("At Higher Levels."));
-				if (higherLevels != default) {
-					builder.AddField("At Higher Levels", higherLevels[18..]);
+				HtmlNode currentNode = node.ChildNodes[5];
+				string nxtInnerText;
+				string outputText = "";
+				bool isFirst = true;
+				
+				do {
+					if (currentNode.Name == "ul") { // Checks for list
+						outputText += (currentNode.PreviousSibling.Name == "ul" ? "" : "\n") + "⠀•⠀";
+					}
+					
+					outputText += currentNode.InnerText[(currentNode.Name == "ul" ? 1 : 0)..];
+					currentNode = currentNode.NextSibling;
+					nxtInnerText = currentNode.InnerText;
+					
+					if (nxtInnerText.Length + outputText.Length > 1018) { //6 spaces of safety margin
+						builder.AddField(isFirst ? "Description" : "⠀", outputText); //Discord doesn't allow empty field names - unicode workaround
+						isFirst = false;
+						outputText = "";
+					} 
 				}
+				while (!nxtInnerText.Contains("At Higher Levels.") && !nxtInnerText.Contains("Spell Lists."));
 
-				HelperFunctions.Serialize(builder, "./cache/spells/" + args + ".xml");
-				await ReplyAsync(embed: builder.Build()); //Send embed to channel
+				if (outputText != string.Empty) {
+					builder.AddField(isFirst ? "Description" : "⠀", outputText);
+				}
+				
+				//Add higher levels if it exists
+				
+				if (nxtInnerText.Contains("At Higher Levels")) {
+					builder.AddField("At Higher Levels", nxtInnerText[18..]);
+				}
+				
+				await ReplyAsync(embed: builder.Build());
+				HelperFunctions.Serialize(builder, $"./cache/spells/{args}.xml");
+				
 				return;
 			}
 			
 			//Loads from cache, much faster and prevents rate limiting
-			await ReplyAsync(embed: HelperFunctions.Deserialize<EmbedBuilder>("./cache/spells/" + args + ".xml").Build());
+			await ReplyAsync(embed: HelperFunctions.Deserialize<EmbedBuilder>($"./cache/spells/{args}.xml").Build());
 
 		}
 
 
 		[Command("feature", RunMode = RunMode.Async)]
-		public async Task Feature(string Class, [Remainder] string args) {
+		public async Task Feature(string className, [Remainder] string args) {
 
 			//Argument here represents the name of the feature that was requested
 			
@@ -125,9 +145,9 @@ namespace DiscordAndDragons {
 				argument = string.Join(' ', args.Split(' ')[1..]);
 			}
 
-			if (Class.Contains(':')) {
-				string[] split = Class.Split(':');
-				Class = split[0].ToLower();
+			if (className.Contains(':')) {
+				string[] split = className.Split(':');
+				className = split[0].ToLower();
 				subClass = split[1].ToLower();
 			}
 			
@@ -148,9 +168,9 @@ namespace DiscordAndDragons {
 			string path = "./cache/features/" + argument + ".xml";
 			if (!File.Exists(path)) {
 				
-				string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/" + (subClass == "" ? Class : Class + ':' + subClass));
+				string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/" + (subClass == "" ? className : className + ':' + subClass));
 
-				HtmlDocument doc = new HtmlDocument();
+				HtmlDocument doc = new();
 				doc.LoadHtml(htmlContent);
 				HtmlNode node = doc.DocumentNode.SelectSingleNode($@"//span[. ='{idealArgument}']"); //XPath for selection of correct Node
 
@@ -163,7 +183,7 @@ namespace DiscordAndDragons {
 				EmbedBuilder builder = new EmbedBuilder()
 					.WithAuthor(idealArgument)
 					//Turns the whole string to lowercase, except the first letter which is uppercase
-					.WithDescription($"**Class:** {char.ToUpper(Class[0]) + Class.ToLower()[1..]}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower()[1..]}" : "")}");
+					.WithDescription($"**Class:** {char.ToUpper(className[0]) + className.ToLower()[1..]}{(subClass != "" ? $"\n**Subclass: ** {char.ToUpper(subClass[0]) + subClass.ToLower()[1..]}" : "")}");
 
 				//Since all features share one common parent, we have to go by siblings
 				//A while loop could also work fyi
@@ -185,9 +205,9 @@ namespace DiscordAndDragons {
 		}
 
 		[Command("spells", RunMode = RunMode.Async)]
-		public async Task GetSpells(string Class, int level, int page = 1) {
+		public async Task GetSpells(string className, int level, int page = 1) {
 
-			string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/spells:" + Class.ToLower());
+			string htmlContent = await HelperFunctions.HttpGet("http://dnd5e.wikidot.com/spells:" + className.ToLower());
 			if (htmlContent == "404") {
 				await ReplyAsync("Incorrect class!");
 				return;
@@ -222,24 +242,23 @@ namespace DiscordAndDragons {
 			//Initialize fields
 
 			EmbedFieldBuilder spellName = new() {IsInline = true, Name = "Name"};
-			EmbedFieldBuilder spellRange = new() {IsInline = true, Name = "Range"};;
-			EmbedFieldBuilder spellCT = new() {IsInline = true, Name = "Casting Time"};;
+			EmbedFieldBuilder spellRange = new() {IsInline = true, Name = "Range"};
+			EmbedFieldBuilder spellCastingTime = new() {IsInline = true, Name = "Casting Time"};
 
 			for (int i = page * 10; i < page * 10 + (page + 1 == maxPages ? spellNodes.Count % 10 : 10); i++) {
 				spellName.Value += spellNodes[i].ChildNodes[1].ChildNodes[0].InnerText + '\n';
 				spellRange.Value += spellNodes[i].ChildNodes[7].InnerText + '\n';
-				spellCT.Value += spellNodes[i].ChildNodes[5].InnerText + '\n';
+				spellCastingTime.Value += spellNodes[i].ChildNodes[5].InnerText + '\n';
 			}
 
-			var builder = new EmbedBuilder().AddField(spellName).AddField(spellRange).AddField(spellCT);
-			builder.Title = char.ToUpper(Class[0]) + Class[1..].ToLower();
+			var builder = new EmbedBuilder().AddField(spellName).AddField(spellRange).AddField(spellCastingTime);
+			builder.Title = char.ToUpper(className[0]) + className[1..].ToLower();
 			if (level == 0) builder.Title += " Cantrips";
 			else builder.Title += $" Level {level} Spells";
 			builder.Title += $" (Page {page+1}/{maxPages})";
 			await ReplyAsync(embed: builder.Build());
 
 		}
-
 
 	}
 
