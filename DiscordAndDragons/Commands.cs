@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -46,6 +47,56 @@ namespace DiscordAndDragons {
 			if (diceMultiplier != 1) await ReplyAsync($"**Rolls:** {string.Join(", ", rolls)}\n**Sum:** {rolls.Sum() + diceOffset}");
 			else if (diceOffset != 0) await ReplyAsync($"**Roll**: {rolls[0]}{(diceOffset > 0 ? "+" : "")}{diceOffset} = {rolls[0] + diceOffset}");
 			else await ReplyAsync($"**Roll:** {rolls[0]}");
+		}
+
+		[Command("cdice")]
+		[Alias("croll", "cr")]
+		public async Task NewDice(List<DiceRoll> dice) {
+			
+			//Alternative dice formatting algorithm (implented by TypeReader, see CommandHandler.cs)
+			
+			EmbedBuilder builder = new EmbedBuilder().WithAuthor("🎲 Roll Statistics");
+			List<int> values = new();
+			
+			//Indicate the three columns displayed inline by embed
+			
+			string valueColumn = "";
+			string advDisadvAvgColumn = "";
+			string resultColumn = "";
+			
+			//Did switch instead of elif by accident because wanted to split case -1 and 1
+			
+			foreach (DiceRoll d in dice) {
+				switch (Math.Sign(d.Multiplier)) {
+					case 1:
+					case -1:
+						
+						valueColumn += d.Multiplier + "d" + d.DiceValue + "\n";
+
+						advDisadvAvgColumn += (d.WithAverage ? "Average" : d.Advantage ? "Advantage" : d.Disadvantage ? "Disadvantage" : "None") + "\n";
+						
+						int value = d.Evaluate();
+						resultColumn += value + "\n";
+						values.Add(value);
+						break;
+					
+					case 0:
+						
+						valueColumn += "None\n";
+						advDisadvAvgColumn += "None\n";
+						resultColumn += d.Evaluate() + "\n"; //Constants always return the same
+						
+						values.Add(d.Evaluate());
+						break;
+					
+				}
+			}
+
+			builder
+				.AddField("Dice Values", valueColumn, true)
+				.AddField("Interference", advDisadvAvgColumn, true)
+				.AddField("Result", resultColumn, true).AddField("Total", values.Sum().ToString());
+			await ReplyAsync(embed: builder.Build());
 		}
 		
 		[Command("spell")]
