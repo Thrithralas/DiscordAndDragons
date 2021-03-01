@@ -4,15 +4,18 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 
 namespace DiscordAndDragons {
 	public class CommandHandler {
-		private DiscordSocketClient _client;
-		private CommandService _commandService;
+		private DiscordSocketClient _client = null!;
+		private CommandService _commandService = null!;
 		private readonly string prefix = ".";
-		private IServiceProvider _services;
+		private IServiceProvider _services = null!;
+		public event Func<LogMessage, Task> CommandLog = null!;
+		private string _className { get; }
 
 		public async Task SetHandler(DiscordSocketClient client, IServiceProvider provider) {
 
@@ -21,11 +24,17 @@ namespace DiscordAndDragons {
 			_commandService = new CommandService();
 
 			_client.MessageReceived += ProcessCommand;
+			CommandLog += Startup.LogAsync;
 
 			_commandService.AddTypeReader<List<DiceRoll>>(new DiceTypeReader());
 			await _commandService.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
 			
 		}
+
+		public CommandHandler() {
+			_className = GetType().Name;
+		}
+		
 		private async Task ProcessCommand(SocketMessage s) {
 
 			if (!(s is SocketUserMessage message)) return;
@@ -38,10 +47,29 @@ namespace DiscordAndDragons {
 					if (result.Error == CommandError.UnknownCommand) await message.Channel.SendMessageAsync("Unknown command!");
 					else {
 						await context.Channel.SendMessageAsync($"**{result.ErrorReason}**");
+						await CommandLog.Invoke(new LogMessage(
+							LogSeverity.Warning,
+							_className,
+							result.ErrorReason
+							));
+						
+						return;
 					}
+					await CommandLog.Invoke(new LogMessage(
+						LogSeverity.Info,
+						_className,
+						$"{message.Author.Username}#{message.Author.Discriminator} issued a bad command in {context.Guild.Name} in #{message.Channel.Name}"
+					));
+				}
+				else {
+					await CommandLog.Invoke(new LogMessage(
+						LogSeverity.Info,
+						_className,
+						$"{message.Author.Username}#{message.Author.Discriminator} issued a command in {context.Guild.Name} in #{message.Channel.Name}"
+					));
 				}
 			}
-		} 
+		}
 	}
 
 	//TypeReader for List<DiceRoll>

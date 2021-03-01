@@ -23,7 +23,7 @@ namespace DiscordAndDragons {
 			Directory.CreateDirectory("./cache/features"); 
 
 			_client = new DiscordSocketClient(new DiscordSocketConfig());
-			_client.Log += Log;
+			_client.Log += LogAsync;
 
 			await _client.LoginAsync(TokenType.Bot, token);
 			await _client.StartAsync();
@@ -39,8 +39,31 @@ namespace DiscordAndDragons {
 
 		}
 
-		private async Task Log(LogMessage l) {
-			await Console.Out.WriteLineAsync(l.Message);
+		internal static async Task LogAsync(LogMessage l) {
+			switch (l.Severity) {
+				case LogSeverity.Info:
+					Console.ForegroundColor = ConsoleColor.White;
+					break;
+				case LogSeverity.Verbose:
+					Console.ForegroundColor = ConsoleColor.Gray;
+					break;
+				case LogSeverity.Debug:
+					Console.ForegroundColor = ConsoleColor.Green;
+					break;
+				case LogSeverity.Warning:
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					break;
+				case LogSeverity.Error:
+					Console.ForegroundColor = ConsoleColor.Red;
+					break;
+				case LogSeverity.Critical:
+					Console.ForegroundColor = ConsoleColor.DarkRed;
+					break;
+			}
+
+			TimeSpan now = DateTime.Now.TimeOfDay;
+			string msg = l.Message == string.Empty ? l.Exception.Message : l.Message;
+			await Console.Out.WriteLineAsync($"[{now:hh\\:mm\\:ss\\.ff} | {l.Source} | {l.Severity}] {msg}");
 		}
 	}
 }
