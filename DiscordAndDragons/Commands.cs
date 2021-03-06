@@ -122,7 +122,13 @@ namespace DiscordAndDragons {
 				//Recursive enumeration to remove table headers
 
 				foreach (var value in node.RecursiveEnumerator()) {
-					if (value.OriginalName == "th" || string.IsNullOrEmpty(value.InnerText) || Regex.IsMatch(value.InnerText, @"^\n{2,}$")) value.ParentNode.RemoveChild(value);
+					if (
+						value.OriginalName == "th" ||
+						string.IsNullOrEmpty(value.InnerText) ||
+						Regex.IsMatch(value.InnerText, @"^\n{2,}$") ||
+						value.OriginalName == "table")
+						
+						value.ParentNode.RemoveChild(value);
 				}
 
 				string name = doc.DocumentNode.SelectSingleNode("//div[@class='page-title page-header']").InnerText; //XPath selector for spell name
