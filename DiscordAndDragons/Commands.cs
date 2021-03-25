@@ -9,6 +9,7 @@ using Discord;
 using Discord.Addons.Interactive;
 using Discord.Commands;
 using HtmlAgilityPack;
+using Newtonsoft.Json.Linq;
 
 // ReSharper disable CommentTypo
 // ReSharper disable IdentifierTypo
@@ -315,6 +316,39 @@ namespace DiscordAndDragons {
 			builder.Title += $" (Page {page+1}/{maxPages})";
 			await ReplyAsync(embed: builder.Build());
 
+		}
+
+		[Command("monster", RunMode = RunMode.Async)]
+		public async Task GetMonster([Remainder] string name) {
+			
+			//Monsters use dynamic, because they are JSON Objects
+			
+			dynamic monster = await HelperFunctions.QueryMonsterByName(name);
+			string speed = string.Empty;
+			JObject jsonObject = (JObject) monster.speed;
+			using var enumerator = jsonObject.GetEnumerator();
+			enumerator.MoveNext(); //First element is empty bc fuck me am I right
+			while (true) {
+				var jsonProperty = enumerator.Current;
+				if (jsonProperty.Key == "walk") speed += (string) jsonProperty.Value + " ft.";
+				else speed += jsonProperty.Key + " " + (string) jsonProperty.Value + " ft.";
+				if (!enumerator.MoveNext()) {
+					break;
+				}
+				speed += ", ";
+			}
+
+			EmbedBuilder builder = new EmbedBuilder()
+				.WithAuthor((string) monster.name)
+				.WithThumbnailUrl((string) await HelperFunctions.GetMonsterImageUrl(monster)) //Monster image URl requires 5etools API Version
+				.WithDescription($"*{(string) HelperFunctions.GetMonsterSizeRaceAndAlignment(monster)}*\n**Armour Class:** {(string) monster.ac[0].ac}\n**Hit Points:** {(string) monster.hp.average} ({(string) monster.hp.formula})\n**Speed:** {speed}\n**Challenge Rating:** {(string) monster.cr} ({HelperFunctions.CRToXP[(string) monster.cr]} XP)")
+				.AddField("Strength", $"{(int) monster.str} ({((int) monster.str).CalculateBonus():+0;-#})", true)
+				.AddField("Dexterity", $"{(int) monster.dex} ({((int) monster.dex).CalculateBonus():+0;-#})", true)
+				.AddField("Constitution", $"{(int) monster.con} ({((int) monster.con).CalculateBonus():+0;-#})", true)
+				.AddField("Intelligence", $"{(int) ((JToken) monster)["int"]} ({((int) ((JToken) monster)["int"]).CalculateBonus():+0;-#})", true)
+				.AddField("Wisdom", $"{(int) monster.wis} ({((int) monster.wis).CalculateBonus():+0;-#})", true)
+				.AddField("Charisma", $"{(int) monster.cha} ({((int) monster.cha).CalculateBonus():+0;-#})", true);
+			await ReplyAsync(embed: builder.Build());
 		}
 
 	}

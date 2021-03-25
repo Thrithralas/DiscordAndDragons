@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -15,7 +14,7 @@ namespace DiscordAndDragons {
 		private readonly string prefix = ".";
 		private IServiceProvider _services = null!;
 		public event Func<LogMessage, Task> CommandLog = null!;
-		private string _className { get; }
+		private string ClassName => GetType().Name;
 
 		public async Task SetHandler(DiscordSocketClient client, IServiceProvider provider) {
 
@@ -31,10 +30,6 @@ namespace DiscordAndDragons {
 			
 		}
 
-		public CommandHandler() {
-			_className = GetType().Name;
-		}
-		
 		private async Task ProcessCommand(SocketMessage s) {
 
 			if (!(s is SocketUserMessage message)) return;
@@ -49,7 +44,7 @@ namespace DiscordAndDragons {
 						await context.Channel.SendMessageAsync($"**{result.ErrorReason}**");
 						await CommandLog.Invoke(new LogMessage(
 							LogSeverity.Warning,
-							_className,
+							ClassName,
 							result.ErrorReason
 							));
 						
@@ -57,14 +52,14 @@ namespace DiscordAndDragons {
 					}
 					await CommandLog.Invoke(new LogMessage(
 						LogSeverity.Info,
-						_className,
+						ClassName,
 						$"{message.Author.Username}#{message.Author.Discriminator} issued a bad command in {context.Guild.Name} in #{message.Channel.Name}"
 					));
 				}
 				else {
 					await CommandLog.Invoke(new LogMessage(
 						LogSeverity.Info,
-						_className,
+						ClassName,
 						$"{message.Author.Username}#{message.Author.Discriminator} issued a command in {context.Guild.Name} in #{message.Channel.Name}"
 					));
 				}

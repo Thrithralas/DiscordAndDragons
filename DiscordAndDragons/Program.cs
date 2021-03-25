@@ -20,7 +20,8 @@ namespace DiscordAndDragons {
 
 			//Creates cache directories
 			Directory.CreateDirectory("./cache/spells");
-			Directory.CreateDirectory("./cache/features"); 
+			Directory.CreateDirectory("./cache/features");
+			Directory.CreateDirectory("./cache/monsters");
 
 			_client = new DiscordSocketClient(new DiscordSocketConfig());
 			_client.Log += LogAsync;
@@ -62,7 +63,7 @@ namespace DiscordAndDragons {
 			}
 
 			TimeSpan now = DateTime.Now.TimeOfDay;
-			string msg = l.Message == string.Empty ? l.Exception.Message : l.Message;
+			string msg = (l.Message == string.Empty ? l.Exception.StackTrace : l.Message) ?? "Missing stack trace.";
 			await Console.Out.WriteLineAsync($"[{now:hh\\:mm\\:ss\\.ff} | {l.Source} | {l.Severity}] {msg}");
 		}
 	}

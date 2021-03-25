@@ -24,9 +24,9 @@ namespace DiscordAndDragons {
 				
 				//Using Math.Abs due to negative multiplier
 				
-				int[] rolls = new int[Math.Abs(Multiplier)].Select(i => RandomNumberGenerator.GetInt32(1, diceValue+1)).ToArray(); //Crypto-safe RNG
+				int[] rolls = new int[Math.Abs(Multiplier)].Select(_ => RandomNumberGenerator.GetInt32(1, diceValue+1)).ToArray(); //Crypto-safe RNG
 				if (Advantage || Disadvantage) {
-					int[] rolls2 = new int[Math.Abs(Multiplier)].Select(i => RandomNumberGenerator.GetInt32(1, diceValue+1)).ToArray();
+					int[] rolls2 = new int[Math.Abs(Multiplier)].Select(_ => RandomNumberGenerator.GetInt32(1, diceValue+1)).ToArray();
 					rolls = rolls2.Zip(rolls, Tuple.Create).Select(t => advantage ? Math.Max(t.Item1, t.Item2) : Math.Min(t.Item1, t.Item2)).ToArray();
 				}
 				return rolls.Sum() * (Multiplier < 0 ? -1 : 1);
